@@ -367,6 +367,7 @@ load_icode(struct Env *e, uint8_t *binary)
 		}
 	}
 
+
 	// Now map one page for the program's initial stack
 	// at virtual address USTACKTOP - PGSIZE.
 
