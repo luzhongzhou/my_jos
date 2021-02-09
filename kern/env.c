@@ -355,22 +355,35 @@ load_icode(struct Env *e, uint8_t *binary)
 	struct Proghdr *ph, *eph;
 
 	elf= (struct Elf *)binary;
-	if(elf)
 
 	ph = (struct Proghdr *) (binary + elf->e_phoff);
 	eph = ph + elf->e_phnum;
+
+	lcr3(PADDR(e->env_pgdir));
 	for (; ph < eph; ph++){
+		if (ph->p_type != ELF_PROG_LOAD) {
+            continue;
+        }
+		if (ph->p_memsz < ph->p_filesz) {
+            panic("ELF size in memory less than size in file...\n");
+        }
+		cprintf("ph->p_va: %x\n", ph->p_va);
 		if(ph->p_type == ELF_PROG_LOAD){
-			region_alloc(e, ph->p_va, ph->p_memsz);
-			memcpy(ph->p_va, binary + ph->p_offset, ph->p_filesz);
-			memset(ph->p_va+ph->p_filesz, 0, ph->p_memsz-ph->p_filesz);
+			region_alloc(e, (void *)ph->p_va, ph->p_memsz);
+			memcpy((void *)ph->p_va, binary + ph->p_offset, ph->p_filesz);
+			memset((void *)ph->p_va+ph->p_filesz, 0, ph->p_memsz-ph->p_filesz);
 		}
 	}
 
+	lcr3(PADDR(kern_pgdir));
 
+	e->env_status = ENV_RUNNABLE;
+
+	e->env_tf.tf_eip = elf->e_entry;
+	cprintf("elf->e_entry: %x\n", elf->e_entry);
 	// Now map one page for the program's initial stack
 	// at virtual address USTACKTOP - PGSIZE.
-
+	region_alloc(e, (void *)(USTACKTOP - PGSIZE), PGSIZE);
 	// LAB 3: Your code here.
 }
 
@@ -393,6 +406,7 @@ env_create(uint8_t *binary, enum EnvType type)
 
 	load_icode(e, binary);
 	e->env_type = type;
+	cprintf("env_create done\n");
 }
 
 //
@@ -517,7 +531,7 @@ env_run(struct Env *e)
 	curenv = e;
 	curenv->env_status = ENV_RUNNING;
 	curenv->env_runs++;
-	lcr3(curenv->env_pgdir);
+	lcr3(PADDR(curenv->env_pgdir));
 	env_pop_tf(&curenv->env_tf);
 	
 	panic("env_run not yet implemented");
