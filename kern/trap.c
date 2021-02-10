@@ -189,10 +189,14 @@ trap_dispatch(struct Trapframe *tf)
 
 	switch (tf->tf_trapno)
 	{
-	case T_FPERR:
+	case T_PGFLT:
 		page_fault_handler(tf);
 		return;
 	
+	case T_BRKPT:
+		monitor(tf);
+		return;
+
 	case T_SYSCALL:
 		tf->tf_regs.reg_eax = syscall(tf->tf_regs.reg_eax, tf->tf_regs.reg_edx, 
 										tf->tf_regs.reg_ecx, tf->tf_regs.reg_ebx, 

@@ -21,15 +21,19 @@ sys_cputs(const char *s, size_t len)
 	// Destroy the environment if not.
 
 	// LAB 3: Your code here.
-	pte_t *pte = NULL;
-	int i;
-	for(i=0; i<len; i+= PGSIZE){
-		if ((page_lookup(curenv->env_pgdir, (void *)(s+i), &pte) == NULL) || ((*pte) & PTE_U) == 0) {
-			env_destroy(curenv);
-			return;
-		}
+	// pte_t *pte = NULL;
+	// int i;
+	// for(i=0; i<len; i+= PGSIZE){
+	// 	if ((page_lookup(curenv->env_pgdir, (void *)(s+i), &pte) == NULL) || ((*pte) & PTE_U) == 0) {
+	// 		env_destroy(curenv);
+	// 		return;
+	// 	}
+	// }
+	if (user_mem_check(curenv, s, len, PTE_U) < 0) {
+		cprintf("user_mem_check assertion failure for va %x\n", s);
+		env_destroy(curenv);
+		return;
 	}
-
 	// Print the string supplied by the user.
 	cprintf("%.*s", len, s);
 }
@@ -46,6 +50,7 @@ sys_cgetc(void)
 static envid_t
 sys_getenvid(void)
 {
+	cprintf("curenv->env_id: %d\n", curenv->env_id);
 	return curenv->env_id;
 }
 
