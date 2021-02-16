@@ -203,7 +203,7 @@ mem_init(void)
 	//       overwrite memory.  Known as a "guard page".
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
-	boot_map_region(kern_pgdir, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_W);
+	//boot_map_region(kern_pgdir, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_W);
 	//////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE.
 	// Ie.  the VA range [KERNBASE, 2^32) should map to
@@ -265,8 +265,8 @@ mem_init_mp(void)
 	//
 	// LAB 4: Your code here:
 	int i;
-	for(i=1; i<NCPU; i++){
-		void *kstacktop_i = KSTACKTOP - i * (KSTKSIZE + KSTKGAP);
+	for(i=0; i<NCPU; i++){
+		uintptr_t kstacktop_i = KSTACKTOP - i * (KSTKSIZE + KSTKGAP);
 		boot_map_region(kern_pgdir, kstacktop_i-KSTKSIZE, KSTKSIZE, PADDR(percpu_kstacks[i]), PTE_W);
 	}
 }
@@ -618,7 +618,14 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// Hint: The staff solution uses boot_map_region.
 	//
 	// Your code here:
-	panic("mmio_map_region not implemented");
+	if (base + ROUNDUP(size, PGSIZE) > MMIOLIM) {
+		panic("mmio_map_region not implemented");
+	}
+
+	boot_map_region(kern_pgdir, base, ROUNDUP(size, PGSIZE), pa, PTE_PCD|PTE_PWT|PTE_W);	
+
+	base += ROUNDUP(size, PGSIZE);
+	return (void *)(base-ROUNDUP(size, PGSIZE));
 }
 
 static uintptr_t user_mem_check_addr;
@@ -860,9 +867,10 @@ check_kern_pgdir(void)
 	// (updated in lab 4 to check per-CPU kernel stacks)
 	for (n = 0; n < NCPU; n++) {
 		uint32_t base = KSTACKTOP - (KSTKSIZE + KSTKGAP) * (n + 1);
-		for (i = 0; i < KSTKSIZE; i += PGSIZE)
+		for (i = 0; i < KSTKSIZE; i += PGSIZE){
 			assert(check_va2pa(pgdir, base + KSTKGAP + i)
 				== PADDR(percpu_kstacks[n]) + i);
+		}
 		for (i = 0; i < KSTKGAP; i += PGSIZE)
 			assert(check_va2pa(pgdir, base + i) == ~0);
 	}
