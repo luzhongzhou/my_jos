@@ -29,7 +29,25 @@ sched_yield(void)
 	// below to halt the cpu.
 
 	// LAB 4: Your code here.
+	int i;
+	int begin = curenv ? (curenv->env_id+1) % NENV : 0;
+	int index;
 
+	//cprintf("cup %d, curenv %d, ");
+
+	for(i=0; i<NENV; i++){
+		index = (i+begin) % NENV;
+
+		if(envs[index].env_status == ENV_RUNNABLE) {
+			
+			env_run(&envs[index]); //never return;
+		}
+
+		if(curenv && (index == curenv->env_id) && curenv->env_status == ENV_RUNNING){
+			env_run(curenv);
+		}
+	}
+	cprintf("no runable env\n");
 	// sched_halt never returns
 	sched_halt();
 }

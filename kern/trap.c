@@ -145,22 +145,19 @@ trap_init_percpu(void)
 	// user space on that CPU.
 	//
 	// LAB 4: Your code here:
-	int i;
-	for (i=0; i<NCPU; i++){
-		cpus[i].cpu_ts.ts_esp0 = KSTACKTOP - i * (KSTKSIZE + KSTKGAP);
-		cpus[i].cpu_ts.ts_ss0 = GD_KD;
-		cpus[i].cpu_ts.ts_iomb = sizeof(struct Taskstate);
+	struct Taskstate *ts = &thiscpu->cpu_ts;
+	ts->ts_esp0 = KSTACKTOP - thiscpu->cpu_id * (KSTKSIZE + KSTKGAP);
+	ts->ts_ss0 = GD_KD;
+	ts->ts_iomb = sizeof(struct Taskstate);
 
 	// Initialize the TSS slot of the gdt.
-		gdt[(GD_TSS0 >> 3) + i] = SEG16(STS_T32A, (uint32_t) (&cpus[i].cpu_ts),
-				sizeof(struct Taskstate) - 1, 0);
-		gdt[(GD_TSS0 >> 3) + i].sd_s = 0;
+	gdt[(GD_TSS0 >> 3) + thiscpu->cpu_id] = SEG16(STS_T32A, (uint32_t)ts, sizeof(struct Taskstate) - 1, 0);
+	gdt[(GD_TSS0 >> 3) + thiscpu->cpu_id].sd_s = 0;
 
-		// Load the TSS selector (like other segment selectors, the
-		// bottom three bits are special; we leave them 0)
-		ltr(GD_TSS0 + i*0x8);
+	// Load the TSS selector (like other segment selectors, the
+	// bottom three bits are special; we leave them 0)
+	ltr(GD_TSS0 + thiscpu->cpu_id*0x8);
 
-	}
 
 	// Load the IDT
 	lidt(&idt_pd);
@@ -281,8 +278,9 @@ trap(struct Trapframe *tf)
 
 	// Re-acqurie the big kernel lock if we were halted in
 	// sched_yield()
-	if (xchg(&thiscpu->cpu_status, CPU_STARTED) == CPU_HALTED)
+	if (xchg(&thiscpu->cpu_status, CPU_STARTED) == CPU_HALTED){
 		lock_kernel();
+	}
 	// Check that interrupts are disabled.  If this assertion
 	// fails, DO NOT be tempted to fix it by inserting a "cli" in
 	// the interrupt path.
@@ -293,6 +291,7 @@ trap(struct Trapframe *tf)
 		// Acquire the big kernel lock before doing any
 		// serious kernel work.
 		// LAB 4: Your code here.
+		lock_kernel();
 		assert(curenv);
 
 		// Garbage collect if current enviroment is a zombie
@@ -339,6 +338,7 @@ page_fault_handler(struct Trapframe *tf)
 	
 	// LAB 3: Your code here.
 	if ((tf->tf_cs & 3) == 0) {
+		cprintf("fault_va 0x%x\n", fault_va);
 		panic("page fault in kernel mode!");
 	}
 	// We've already handled kernel-mode exceptions, so if we get here,

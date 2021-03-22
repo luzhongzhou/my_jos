@@ -51,7 +51,6 @@ sys_cgetc(void)
 static envid_t
 sys_getenvid(void)
 {
-	cprintf("curenv->env_id: %d\n", curenv->env_id);
 	return curenv->env_id;
 }
 
@@ -304,7 +303,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 			break;
 
 		case SYS_yield:
-			
+			sched_yield();
+			break;
 
 		default:
 			return -E_INVAL;
