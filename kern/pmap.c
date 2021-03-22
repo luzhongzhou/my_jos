@@ -599,7 +599,7 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// value will be preserved between calls to mmio_map_region
 	// (just like nextfree in boot_alloc).
 	static uintptr_t base = MMIOBASE;
-
+	uintptr_t tmp = base;
 	// Reserve size bytes of virtual memory starting at base and
 	// map physical pages [pa,pa+size) to virtual addresses
 	// [base,base+size).  Since this is device memory and not
@@ -619,13 +619,13 @@ mmio_map_region(physaddr_t pa, size_t size)
 	//
 	// Your code here:
 	if (base + ROUNDUP(size, PGSIZE) > MMIOLIM) {
-		panic("mmio_map_region not implemented");
+		panic("mmio_map_region exceed limit\n");
 	}
 
 	boot_map_region(kern_pgdir, base, ROUNDUP(size, PGSIZE), pa, PTE_PCD|PTE_PWT|PTE_W);	
 
 	base += ROUNDUP(size, PGSIZE);
-	return (void *)(base-ROUNDUP(size, PGSIZE));
+	return (void *)tmp;
 }
 
 static uintptr_t user_mem_check_addr;
