@@ -33,17 +33,13 @@ sched_yield(void)
 	int begin = curenv ? (curenv->env_id+1) % NENV : 0;
 	int index;
 
-	//cprintf("cup %d, curenv %d, ");
-
 	for(i=0; i<NENV; i++){
 		index = (i+begin) % NENV;
-
 		if(envs[index].env_status == ENV_RUNNABLE) {
-			cprintf("env %d will run\n", index);
 			env_run(&envs[index]); //never return;
 		}
 
-		if(curenv && (index == curenv->env_id) && curenv->env_status == ENV_RUNNING){
+		if(curenv && (index == ENVX(curenv->env_id)) && curenv->env_status == ENV_RUNNING){
 			env_run(curenv);
 		}
 	}

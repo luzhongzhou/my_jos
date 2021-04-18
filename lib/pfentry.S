@@ -41,7 +41,10 @@ _pgfault_upcall:
 	// Now the C page fault handler has returned and you must return
 	// to the trap time state.
 	// Push trap-time %eip onto the trap-time stack.
-	//
+	//thisenv
+	//addl $36, %esp
+	//popl %eax
+
 	// Explanation:
 	//   We must prepare the trap-time stack for our eventual return to
 	//   re-execute the instruction that faulted.
@@ -65,18 +68,27 @@ _pgfault_upcall:
 	// ways as registers become unavailable as scratch space.
 	//
 	// LAB 4: Your code here.
+	addl $8, %esp //point to utf_regs
+	movl 0x20(%esp), %eax
+	movl 0x28(%esp), %ebx
+	subl $4, %ebx
+	movl %ebx, 0x28(%esp) //
+	movl %eax, %ebx
 
+	//addl $0x20, %esp //
 	// Restore the trap-time registers.  After you do this, you
 	// can no longer modify any general-purpose registers.
 	// LAB 4: Your code here.
-
+	popal
 	// Restore eflags from the stack.  After you do this, you can
 	// no longer use arithmetic operations or anything else that
 	// modifies eflags.
 	// LAB 4: Your code here.
-
+	addl $24, %esp
+	popf
 	// Switch back to the adjusted trap-time stack.
 	// LAB 4: Your code here.
-
+	movl 0x4(%esp), %esp
 	// Return to re-execute the instruction that faulted.
 	// LAB 4: Your code here.
+	ret
