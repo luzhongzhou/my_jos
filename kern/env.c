@@ -391,8 +391,6 @@ load_icode(struct Env *e, uint8_t *binary)
 	e->env_status = ENV_RUNNABLE;
 
 	e->env_tf.tf_eip = elf->e_entry;
-	cprintf("elf->e_entry: %x\n", elf->e_entry);
-	// Now map one page for the program's initial stack
 	// at virtual address USTACKTOP - PGSIZE.
 	region_alloc(e, (void *)(USTACKTOP - PGSIZE), PGSIZE);
 	// LAB 3: Your code here.
@@ -417,7 +415,6 @@ env_create(uint8_t *binary, enum EnvType type)
 
 	load_icode(e, binary);
 	e->env_type = type;
-	cprintf("env_create done\n");
 }
 
 //
