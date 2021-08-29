@@ -18,6 +18,7 @@ static void
 pgfault(struct UTrapframe *utf)
 {
 	void *addr = (void *) utf->utf_fault_va;
+	addr = ROUNDDOWN(addr, PGSIZE);
 	uint32_t err = utf->utf_err;
 	int r;
 	pte_t pte;
@@ -115,6 +116,7 @@ duppage(envid_t envid, unsigned pn)
 //   Neither user exception stack should ever be marked copy-on-write,
 //   so you must allocate a new page for the child's user exception stack.
 //
+extern void _pgfault_upcall(void);
 
 envid_t
 fork(void)
@@ -122,7 +124,8 @@ fork(void)
 	// LAB 4: Your code here.
 	//panic("fork not implemented");
 	envid_t envid;
-	uint8_t *addr;
+	uintptr_t addr;
+
 	extern unsigned char end[];
 	int r;
 
@@ -131,19 +134,25 @@ fork(void)
 	envid = sys_exofork();
 
 	if (envid > 0) { //father process
-		// virtual address 0 - UTOP
-		cprintf("%s, PGNUM(TUOP) %d\n", __FUNCTION__, PGNUM(UTOP));
-		for(unsigned int i = 0; i < PGNUM(UTOP); i++){
-			if(i == PGNUM(UXSTACKTOP - PGSIZE))
+
+		for(addr = 0; addr < UTOP; addr += PGSIZE){
+			if(addr == (UXSTACKTOP - PGSIZE))
 				continue;
 			
+			if(!(uvpd[PDX(addr)] & PTE_P))
+				continue;
 			
-			if(!(uvpt[i] & PTE_P))
+			if(!(uvpt[PGNUM(addr)] & PTE_P))
 				continue;
 
-			if(duppage(envid, i) < 0)
+			if(!(uvpt[PGNUM(addr)] & PTE_U))
+				continue;
+
+			if(duppage(envid, PGNUM(addr)) < 0)
 				panic("Duppage Failed!");
 		}
+		sys_page_alloc(envid, (void *)(UXSTACKTOP-PGSIZE), PTE_U | PTE_P | PTE_W);
+		sys_env_set_pgfault_upcall(envid, _pgfault_upcall);
 
 		sys_env_set_status(envid, ENV_RUNNABLE);
 		

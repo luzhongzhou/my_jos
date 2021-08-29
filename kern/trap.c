@@ -347,22 +347,18 @@ page_fault_handler(struct Trapframe *tf)
 	if(curenv->env_pgfault_upcall) {
 		if((curenv->env_tf.tf_esp < UXSTACKTOP) && (curenv->env_tf.tf_esp >= UXSTACKTOP - PGSIZE))
 			utf = (struct UTrapframe *)(curenv->env_tf.tf_esp - sizeof(struct UTrapframe) - 4);
-		else	
-			utf = (struct UTrapframe *)(UXSTACKTOP - sizeof(struct UTrapframe));
+		else /*first time*/
+			utf = (struct UTrapframe *)(UXSTACKTOP - sizeof(struct UTrapframe)); //0xeebfffcc, sizeof(struct UTrapframe)=0x34
 		utf->utf_esp = tf->tf_esp;
 		utf->utf_eflags = tf->tf_eflags;
 		utf->utf_eip = tf->tf_eip;
-		cprintf("%s, tf->eip: 0x%x\n", __FUNCTION__, tf->tf_eip);
 		utf->utf_regs = tf->tf_regs;
 		utf->utf_err = tf->tf_err;
-		cprintf("%s, env_id: 0x%x, tf_err: %d\n ", __FUNCTION__, curenv->env_id, tf->tf_err);
 		utf->utf_fault_va = fault_va;
-		cprintf("%s, fault ddress: 0x%x\n", __FUNCTION__, fault_va);
 
 		curenv->env_tf.tf_esp = (uintptr_t)utf;
 		curenv->env_tf.tf_eip = (uintptr_t)curenv->env_pgfault_upcall;
 		env_run(curenv);
-		//*(curenv->env_pgfault_upcall)();
 	}
 	// The page fault upcall might cause another page fault, in which case
 	// we branch to the page fault upcall recursively, pushing another
