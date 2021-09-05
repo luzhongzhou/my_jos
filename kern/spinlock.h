@@ -2,7 +2,7 @@
 #define JOS_INC_SPINLOCK_H
 
 #include <inc/types.h>
-
+extern int cpunum();
 // Comment this to disable spinlock debugging
 #define DEBUG_SPINLOCK
 
