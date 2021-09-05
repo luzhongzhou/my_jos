@@ -350,6 +350,8 @@ sys_page_unmap(envid_t envid, void *va)
 //	-E_INVAL if srcva < UTOP but srcva is not page-aligned.
 //	-E_INVAL if srcva < UTOP and perm is inappropriate
 //		(see sys_page_alloc).
+// perm -- PTE_U | PTE_P must be set, PTE_AVAIL | PTE_W may or may not be set,
+//         but no other bits may be set.  See PTE_SYSCALL in inc/mmu.h.
 //	-E_INVAL if srcva < UTOP but srcva is not mapped in the caller's
 //		address space.
 //	-E_INVAL if (perm & PTE_W), but srcva is read-only in the
@@ -360,7 +362,45 @@ static int
 sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 {
 	// LAB 4: Your code here.
-	panic("sys_ipc_try_send not implemented");
+	//panic("sys_ipc_try_send not implemented");
+	struct Env *dstenv;
+	
+	if (envid2env(envid, &dstenv, 0) < 0) {
+		return -E_BAD_ENV;
+	}
+	if (dstenv->env_ipc_recving != 1) {
+		return -E_IPC_NOT_RECV;
+	}
+
+	//cprintf("%s:%d, srcva: %x\n", __FUNCTION__, __LINE__, (uint32_t)srcva);
+
+	if ((uint32_t)srcva < UTOP && ((uint32_t)srcva & 0xfff)) {
+		return -E_INVAL;
+	}
+
+	if ((uint32_t)srcva < UTOP) {
+		if ((perm & (perm & (PTE_U | PTE_P))) != (PTE_U | PTE_P) ||
+			perm &  ~(PTE_U | PTE_P | PTE_AVAIL | PTE_W)) {
+
+			return -E_INVAL;
+		}
+	}	
+
+	// how express srcva is not mapped in the caller's address space.
+	// TODO: exeption handling. 
+	//if (srcva < UTOP && )
+
+
+	dstenv->env_ipc_recving = 0;
+	dstenv->env_ipc_from = curenv->env_id;
+	dstenv->env_ipc_value = value;
+
+	if(dstenv->env_ipc_dstva && (uint32_t)srcva < UTOP) {
+		sys_page_map(curenv->env_id, srcva, dstenv->env_id, dstenv->env_ipc_dstva, perm);
+	}
+
+	dstenv->env_status = ENV_RUNNABLE;
+	return 0;
 }
 
 // Block until a value is ready.  Record that you want to receive
@@ -378,7 +418,20 @@ static int
 sys_ipc_recv(void *dstva)
 {
 	// LAB 4: Your code here.
-	panic("sys_ipc_recv not implemented");
+	//panic("sys_ipc_recv not implemented");
+	
+	if ((uint32_t)dstva < UTOP) {
+		if ((uint32_t)dstva & 0xfff) {
+			return -E_INVAL;
+		}
+		curenv->env_ipc_dstva = dstva;
+	}
+
+	curenv->env_ipc_recving = 1;
+	curenv->env_status = ENV_NOT_RUNNABLE;
+
+	curenv->env_tf.tf_regs.reg_eax = 0;
+	sched_yield();
 	return 0;
 }
 
@@ -435,6 +488,15 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 
 		case SYS_env_set_pgfault_upcall:
 			ret = sys_env_set_pgfault_upcall((envid_t)a1, (void *)a2);
+			break;
+		case SYS_ipc_try_send:
+			ret = sys_ipc_try_send((envid_t)a1, (uint32_t)a2, (void *)a3, (unsigned)a4);
+			break;
+
+		case SYS_ipc_recv:
+			ret = sys_ipc_recv((void *)a1);
+			cprintf("case SYS_ipc_recv ret : %d\n", ret);
+			break;
 
 		default:
 			return -E_INVAL;

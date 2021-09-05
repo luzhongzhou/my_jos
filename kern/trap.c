@@ -373,6 +373,7 @@ page_fault_handler(struct Trapframe *tf)
 		utf->utf_esp = tf->tf_esp;
 		utf->utf_eflags = tf->tf_eflags;
 		utf->utf_eip = tf->tf_eip;
+		//cprintf("[%x] pagefault add: %x\n", curenv->env_id, tf->tf_eip);
 		utf->utf_regs = tf->tf_regs;
 		utf->utf_err = tf->tf_err;
 		utf->utf_fault_va = fault_va;
